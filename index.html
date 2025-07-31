@@ -1,0 +1,191 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#FF9800">
+  <title>Lista de Compras</title>
+  <link rel="icon" type="image/png" href="Carrinho.png">
+  <style>
+    body {
+      font-family: sans-serif;
+      background-color: #fff8e1;
+      margin: 0;
+      padding: 1em;
+    }
+    header {
+      background-color: #ff5722;
+      text-align: center;
+      padding: 1em;
+      border-radius: 10px 10px 0 0;
+    }
+    header img {
+      max-height: 100px;
+    }
+    .form {
+      padding: 0.5em;
+      background-color: #2196f3;
+      border-radius: 0 0 10px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      color: white;
+    }
+    input, select, button {
+      margin: 0.2em 0;
+      padding: 0.3em 0.7em;
+      font-size: 1em;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4caf50;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .categoria-barra {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    .categoria-barra input {
+      flex-grow: 1;
+    }
+    .categoria-barra button {
+      background-color: #ff9800;
+      color: white;
+      font-size: 1.2em;
+    }
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      font-size: 0.9em;
+      background-color: #fff;
+      margin: 0.1em 0;
+      padding: 0.3em 0.7em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-radius: 6px;
+      box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+    }
+    .item-info {
+      flex-grow: 1;
+      padding: 0 1em;
+    }
+    .actions button {
+      margin-left: 0.5em;
+      background-color: transparent;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="Carrinho.png" alt="Carrinho de supermercado">
+  </header>
+
+  <div class="form">
+    <input type="text" id="produto" placeholder="Produto">
+    <input type="text" id="quantidade" placeholder="Quantidade">
+    <div class="categoria-barra">
+      <input type="text" id="categoria" placeholder="Categoria">
+      <button onclick="buscarPorCategoria()">🔍</button>
+    </div>
+    <button onclick="incluirItem()">Incluir</button>
+  </div>
+
+  <ul id="lista" style="padding:0;"></ul>
+
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAqKRgVySm-vGFMi_iE2HJqlDAofmEAKAI",
+      authDomain: "listacompras-8b4b0.firebaseapp.com",
+      databaseURL: "https://listacompras-8b4b0-default-rtdb.firebaseio.com",
+      projectId: "listacompras-8b4b0",
+      storageBucket: "listacompras-8b4b0.firebasestorage.app",
+      messagingSenderId: "729159542190",
+      appId: "1:729159542190:web:bd0571be160cfd723a543f"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const dbRef = db.ref("listaCompartilhada");
+
+    let lista = [];
+    let listaFiltrada = [];
+
+    function incluirItem() {
+      const produto = document.getElementById('produto').value;
+      const quantidade = document.getElementById('quantidade').value;
+      const categoria = document.getElementById('categoria').value;
+      if (!produto) return;
+      const item = { produto, quantidade, categoria, riscado: false };
+      dbRef.push(item);
+      limparCampos();
+    }
+
+    function buscarPorCategoria() {
+      const categoria = document.getElementById('categoria').value.toLowerCase();
+      if (!categoria) {
+        renderizarLista(lista);
+        return;
+      }
+      listaFiltrada = lista.filter(item => item.categoria.toLowerCase().includes(categoria));
+      renderizarLista(listaFiltrada);
+    }
+
+    function limparCampos() {
+      document.getElementById('produto').value = '';
+      document.getElementById('quantidade').value = '';
+      document.getElementById('categoria').value = '';
+    }
+
+    function renderizarLista(listaAtual) {
+      const ul = document.getElementById('lista');
+      ul.innerHTML = '';
+      listaAtual.forEach((item) => {
+        const li = document.createElement('li');
+
+        const info = document.createElement('div');
+        info.className = 'item-info';
+        info.innerHTML = `<strong>${item.produto}</strong> - ${item.quantidade} (${item.categoria})`;
+
+        const divAcoes = document.createElement('div');
+        divAcoes.className = 'actions';
+
+        const excluir = document.createElement('button');
+        excluir.innerHTML = '🗑️';
+        excluir.onclick = () => {
+          dbRef.orderByChild("produto").equalTo(item.produto).once("value", snapshot => {
+            snapshot.forEach(child => {
+              if (child.val().quantidade === item.quantidade && child.val().categoria === item.categoria) {
+                dbRef.child(child.key).remove();
+              }
+            });
+          });
+        };
+
+        divAcoes.appendChild(excluir);
+        li.appendChild(info);
+        li.appendChild(divAcoes);
+        ul.appendChild(li);
+      });
+    }
+
+    dbRef.on("value", snapshot => {
+      lista = [];
+      snapshot.forEach(childSnapshot => {
+        lista.push(childSnapshot.val());
+      });
+      renderizarLista(lista);
+    });
+  </script>
+</body>
+</html>
