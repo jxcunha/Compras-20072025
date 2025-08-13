@@ -11,42 +11,91 @@
     body { font-family: sans-serif; background-color: #fff8e1; margin: 0; padding: 1em; }
     header { background-color: #ff5722; text-align: center; padding: 1em; border-radius: 10px 10px 0 0; }
     header img { max-height: 100px; }
-    .form { padding: 0.5em; background-color: #2196f3; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; gap: 0.5em; color: white; }
-    input, button { margin: 0.2em 0; padding: 0.3em 0.7em; font-size: 1em; border-radius: 6px; border: 1px solid #ccc; }
-    button { background-color: #4caf50; color: white; font-weight: bold; cursor: pointer; }
-    .categoria-barra { display: flex; align-items: center; gap: 0.5em; }
+
+    /* Área de login e app */
+    .wrapper { max-width: 720px; margin: 0 auto; }
+    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 1rem; margin-top: 1rem; }
+    .row { display: flex; gap: .5rem; flex-wrap: wrap; }
+    label { font-weight: 600; }
+    input, button { padding: .6rem .8rem; font-size: 1rem; border-radius: 8px; border: 1px solid #ddd; }
+    button { background-color: #4caf50; color: white; font-weight: 700; cursor: pointer; border: none; }
+    button.secondary { background:#607d8b; }
+    button.warn { background:#e53935; }
+
+    .form { padding: .5em; background-color: #2196f3; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; gap: .5em; color: white; }
+    .categoria-barra { display: flex; align-items: center; gap: .5em; }
     .categoria-barra input { flex-grow: 1; }
     .categoria-barra button { background-color: #ff9800; color: white; font-size: 1.2em; }
+
     ul { list-style: none; padding: 0; }
-    li { font-size: 0.9em; background: #fff; margin: 0.1em 0; padding: 0.3em 0.7em; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
+    li { font-size: .95em; background: #fff; margin: .15em 0; padding: .45em .7em; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
     .item-info { flex-grow: 1; padding: 0 1em; }
-    .actions button { margin-left: 0.5em; background: transparent; border: none; cursor: pointer; font-size: 1.1em; }
-    .msg { margin-top: 8px; color: #b71c1c; font-size: 0.95em; background: #ffebee; padding: 6px 10px; border-radius: 6px; display:none; }
+    .actions button { margin-left: .5em; background: transparent; border: none; cursor: pointer; font-size: 1.1em; }
+
+    .msg { margin-top: 8px; color: #b71c1c; font-size: .95em; background: #ffebee; padding: 6px 10px; border-radius: 6px; display:none; }
+    .ok  { margin-top: 8px; color: #1b5e20; font-size: .95em; background: #e8f5e9; padding: 6px 10px; border-radius: 6px; display:none; }
+    .muted { color:#666; font-size:.9rem; }
   </style>
 </head>
 <body>
-  <header>
+  <header class="wrapper">
     <img src="carrinho.png" alt="Carrinho de supermercado" />
   </header>
 
-  <div class="form">
-    <input type="text" id="produto" placeholder="Produto" />
-    <input type="text" id="quantidade" placeholder="Quantidade" />
-    <div class="categoria-barra">
-      <input type="text" id="categoria" placeholder="Categoria" />
-      <button type="button" onclick="buscarPorCategoria()">🔍</button>
+  <div class="wrapper">
+    <!-- TELA DE LOGIN -->
+    <div id="loginCard" class="card">
+      <h3>Entrar para acessar a lista</h3>
+      <div class="row">
+        <div style="flex:1 1 260px">
+          <label for="email">E‑mail</label><br/>
+          <input type="email" id="email" placeholder="seuemail@exemplo.com" autocomplete="username" />
+        </div>
+        <div style="flex:1 1 220px">
+          <label for="senha">Senha</label><br/>
+          <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" />
+        </div>
+      </div>
+      <div class="row" style="margin-top:.5rem">
+        <button id="btnEntrar">Entrar</button>
+      </div>
+      <p class="muted">Acesso restrito a e‑mails autorizados nas regras do Firebase.</p>
+      <div class="msg" id="loginMsg"></div>
     </div>
-    <button type="button" onclick="incluirItem()">Incluir</button>
-    <div class="msg" id="msg"></div>
-  </div>
 
-  <ul id="lista"></ul>
+    <!-- APP (só aparece autenticado) -->
+    <div id="appCard" class="card" style="display:none">
+      <div class="row" style="justify-content:space-between; align-items:center">
+        <h3 style="margin:0">Lista de Compras</h3>
+        <div>
+          <span id="userEmail" class="muted"></span>
+          <button id="btnSair" class="warn">Sair</button>
+        </div>
+      </div>
+
+      <div class="form" style="margin-top:.75rem">
+        <input type="text" id="produto" placeholder="Produto" />
+        <input type="text" id="quantidade" placeholder="Quantidade" />
+        <div class="categoria-barra">
+          <input type="text" id="categoria" placeholder="Categoria" />
+          <button type="button" id="btnBuscarCat">🔍</button>
+        </div>
+        <button type="button" id="btnIncluir">Incluir</button>
+        <div class="msg" id="msg"></div>
+        <div class="ok"  id="ok"></div>
+      </div>
+
+      <ul id="lista"></ul>
+    </div>
+  </div>
 
   <!-- Firebase (compat) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
+    // --- Config Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAqKRgVySm-vGFMi_iE2HJqlDAofmEAKAI",
       authDomain: "listacompras-8b4b0.firebaseapp.com",
@@ -57,55 +106,116 @@
       appId: "1:729159542190:web:bd0571be160cfd723a543f"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const dbRef = db.ref("listaCompartilhada");
 
-    let lista = [];
+    // Helpers
     const $ = (id) => document.getElementById(id);
-    const msg = (texto) => {
-      const el = $("msg");
-      el.textContent = texto;
-      el.style.display = texto ? "block" : "none";
-    };
+    const show = (el, on) => el.style.display = on ? 'block' : 'none';
+    const showMsg = (text) => { const el=$("msg"); el.textContent=text||""; show(el, !!text); };
+    const showOk  = (text) => { const el=$("ok");  el.textContent=text||""; show(el, !!text); };
+    const loginMsg = (text) => { const el=$("loginMsg"); el.textContent=text||""; show(el, !!text); };
 
-    async function incluirItem() {
-      msg("");
-      const produto = $("produto").value.trim();
-      const quantidade = $("quantidade").value.trim();
-      const categoria = $("categoria").value.trim();
+    // Auth UI
+    const auth = firebase.auth();
 
-      if (!produto) {
-        msg("Informe pelo menos o nome do produto.");
-        return;
-      }
+    // Referência do DB só será definida após login
+    let db = null;
+    let dbRef = null;
+    let dbListener = null;
 
-      const item = { produto, quantidade: quantidade || "", categoria: categoria || "", riscado: false };
+    // Liga/Desliga listener da lista
+    function attachListListener() {
+      if (!dbRef) return;
+      // Evita listeners duplicados
+      if (dbListener) dbRef.off("value", dbListener);
 
-      try {
-        await dbRef.push(item);
-        limparCampos();
-      } catch (e) {
-        console.error(e);
-        msg("Não foi possível salvar no Firebase. Verifique as REGRAS do Realtime Database. (Erro: " + (e && e.message ? e.message : e) + ")");
-      }
-    }
-
-    function buscarPorCategoria() {
-      msg("");
-      const filtro = ($("categoria").value || "").toLowerCase();
-      if (!filtro) {
+      dbListener = (snapshot) => {
+        const lista = [];
+        snapshot.forEach((child) => {
+          const val = child.val() || {};
+          val.__key = child.key;
+          lista.push(val);
+        });
         renderizarLista(lista);
-        return;
-      }
-      const filtrada = lista.filter(it => (it.categoria || "").toLowerCase().includes(filtro));
-      renderizarLista(filtrada);
+      };
+
+      dbRef.on("value", dbListener, (error) => {
+        showMsg("Não foi possível carregar a lista: " + (error?.message || error));
+      });
     }
+
+    function detachListListener() {
+      if (dbRef && dbListener) {
+        dbRef.off("value", dbListener);
+      }
+      dbListener = null;
+    }
+
+    // Estado de autenticação
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        $("userEmail").textContent = user.email || "";
+        show($("loginCard"), false);
+        show($("appCard"),   true);
+
+        db = firebase.database();
+        dbRef = db.ref("listaCompartilhada");
+        attachListListener();
+      } else {
+        detachListListener();
+        dbRef = null;
+
+        show($("appCard"),   false);
+        show($("loginCard"), true);
+      }
+    });
+
+    // Entrar
+    $("btnEntrar").addEventListener("click", async () => {
+      loginMsg("");
+      const email = $("email").value.trim();
+      const senha = $("senha").value;
+      if (!email || !senha) { loginMsg("Informe e‑mail e senha."); return; }
+      try {
+        await auth.signInWithEmailAndPassword(email, senha);
+        // regras por e-mail já garantem o acesso em /listaCompartilhada
+      } catch (e) {
+        loginMsg(e?.message || "Falha ao entrar.");
+      }
+    });
+
+    // Sair
+    $("btnSair").addEventListener("click", () => auth.signOut());
+
+    // --- Funções do App (usam dbRef somente autenticado)
+    $("btnIncluir").addEventListener("click", incluirItem);
+    $("btnBuscarCat").addEventListener("click", buscarPorCategoria);
 
     function limparCampos() {
       $("produto").value = "";
       $("quantidade").value = "";
       $("categoria").value = "";
       $("produto").focus();
+    }
+
+    async function incluirItem() {
+      showMsg(""); showOk("");
+      if (!dbRef) { showMsg("Você precisa estar autenticado."); return; }
+
+      const produto    = $("produto").value.trim();
+      const quantidade = $("quantidade").value.trim();
+      const categoria  = $("categoria").value.trim();
+
+      if (!produto) { showMsg("Informe pelo menos o nome do produto."); return; }
+
+      const item = { produto, quantidade: quantidade || "", categoria: categoria || "", riscado: false };
+
+      try {
+        await dbRef.push(item);
+        limparCampos();
+        showOk("Item incluído!");
+      } catch (e) {
+        showMsg("Não foi possível salvar no Firebase. Verifique as REGRAS do Realtime Database. (Erro: " + (e?.message || e) + ")");
+      }
     }
 
     function renderizarLista(arr) {
@@ -127,8 +237,9 @@
         btnExcluir.title = "Excluir";
         btnExcluir.textContent = "🗑️";
         btnExcluir.onclick = () => {
+          if (!dbRef) { showMsg("Você precisa estar autenticado."); return; }
           if (item.__key) {
-            dbRef.child(item.__key).remove().catch(err => msg("Erro ao excluir: " + err.message));
+            dbRef.child(item.__key).remove().catch(err => showMsg("Erro ao excluir: " + (err?.message || err)));
           }
         };
 
@@ -139,18 +250,17 @@
       });
     }
 
-    dbRef.on("value", (snapshot) => {
-      lista = [];
-      snapshot.forEach((child) => {
-        const val = child.val() || {};
-        val.__key = child.key;
-        lista.push(val);
+    function buscarPorCategoria() {
+      // Filtra somente o que está já renderizado (listener atualiza sempre que muda)
+      const filtro = ($("categoria").value || "").toLowerCase();
+      const items = Array.from($("lista").children);
+      items.forEach(li => {
+        const texto = li.querySelector(".item-info")?.textContent?.toLowerCase() || "";
+        li.style.display = filtro && !texto.includes(`(${filtro}`) && !texto.includes(filtro) ? "none" : "";
       });
-      renderizarLista(lista);
-    }, (error) => {
-      msg("Não foi possível carregar a lista do Firebase. " + (error && error.message ? error.message : ""));
-    });
+    }
 
+    // PWA
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')
         .then(() => console.log("Service Worker registrado com sucesso."))
