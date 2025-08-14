@@ -54,8 +54,7 @@
       user-select: none;
     }
     .icone-upload:active { transform: translateY(-50%) scale(.95); }
-    /* oculta o input file real */
-    #imagemProduto { display: none; }
+    #imagemProduto { display: none; } /* esconde o input file */
   </style>
 </head>
 <body>
@@ -99,7 +98,6 @@
           <button type="button" id="btnBuscarCat">🔍</button>
         </div>
 
-        <!-- Botão com onclick direto -->
         <button type="button" id="btnIncluir" onclick="incluirItem()">Incluir</button>
 
         <div class="msg" id="msg"></div>
@@ -200,17 +198,13 @@
       }
     });
 
-    // Renova o carimbo quando volta para a aba (uso real)
     document.addEventListener("visibilitychange", () => {
       if (!document.hidden && auth.currentUser) markAccessNow();
     });
 
     // App
-    // (removemos o addEventListener do Incluir — agora o onclick chama a função)
-
-    // Torna a função global e robusta
     window.incluirItem = async function incluirItem(){
-      showMsg(""); showOk("");
+      showMsg(""); // não exibiremos mais showOk aqui
       if (!dbRef){ showMsg("Você precisa estar autenticado."); return; }
 
       const produto    = $("produto").value.trim();
@@ -222,16 +216,14 @@
 
       let imageUrl = "";
       try {
-        // 1) Upload da imagem (se houver)
         if (arquivo && storage) {
           const uid = auth.currentUser ? auth.currentUser.uid : "anon";
           const caminho = `imagens/${uid}/${Date.now()}_${arquivo.name}`;
           const ref = storage.ref().child(caminho);
-          await ref.put(arquivo);
+          await ref.put(arquivo, { contentType: arquivo.type });
           imageUrl = await ref.getDownloadURL();
         }
 
-        // 2) Salva o item no Realtime DB
         const item = {
           produto,
           quantidade: quantidade || "",
@@ -241,13 +233,13 @@
         };
         await dbRef.push(item);
 
-        // 3) Limpa formulário e feedback
+        // Limpa campos (sem mostrar "Item incluído")
         $("produto").value = "";
         $("quantidade").value = "";
         $("categoria").value = "";
         $("imagemProduto").value = "";
         $("produto").focus();
-        showOk("Item incluído!");
+
         markAccessNow();
       } catch(e){
         console.error("incluirItem erro:", e);
