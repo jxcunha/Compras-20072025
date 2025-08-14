@@ -11,28 +11,22 @@
     body { font-family: sans-serif; background-color: #fff8e1; margin: 0; padding: 1em; }
     header { background-color: #ff5722; text-align: center; padding: 1em; border-radius: 10px 10px 0 0; }
     header img { max-height: 100px; }
-
     .wrapper { max-width: 720px; margin: 0 auto; }
     .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 1rem; margin-top: 1rem; }
-
     .row { display: flex; gap: .5rem; flex-wrap: wrap; }
     label { font-weight: 600; }
     input, button { padding: .6rem .8rem; font-size: 1rem; border-radius: 8px; border: 1px solid #ddd; }
     button { background-color: #4caf50; color: white; font-weight: 700; cursor: pointer; border: none; }
-
     .form { padding: .5em; background-color: #2196f3; border-radius: 10px; display: flex; flex-direction: column; gap: .5em; color: white; }
     .categoria-barra { display: flex; align-items: center; gap: .5em; }
     .categoria-barra input { flex-grow: 1; }
     .categoria-barra button { background-color: #ff9800; color: white; font-size: 1.2em; }
-
     ul { list-style: none; padding: 0; }
     li { font-size: .95em; background: #fff; margin: .15em 0; padding: .45em .7em; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
     .item-info { flex-grow: 1; padding: 0 1em; }
     .actions button { margin-left: .5em; background: transparent; border: none; cursor: pointer; font-size: 1.1em; }
-
     .msg { margin-top: 8px; color: #b71c1c; font-size: .95em; background: #ffebee; padding: 6px 10px; border-radius: 6px; display:none; }
     .ok  { margin-top: 8px; color: #1b5e20; font-size: .95em; background: #e8f5e9; padding: 6px 10px; border-radius: 6px; display:none; }
-    .muted { color:#666; font-size:.9rem; }
   </style>
 </head>
 <body>
@@ -105,7 +99,7 @@
     const auth = firebase.auth();
     let db = null, dbRef = null, dbListener = null;
 
-    // ------- Logout automático após 30 dias sem abrir o app (corrigido)
+    // ------- Logout automático após 30 dias sem abrir o app (com proteção de 1º login)
     const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
     function markAccessNow(){ localStorage.setItem("lastAccessAt", Date.now().toString()); }
     function sessionExpiredStrict(){
@@ -155,15 +149,16 @@
       }
     });
 
-    // Login
+    // Login (evita corrida: grava carimbo antes e depois)
     $("btnEntrar").addEventListener("click", async () => {
       loginMsg("");
       const email = $("email").value.trim();
       const senha = $("senha").value;
       if (!email || !senha){ loginMsg("Informe e‑mail e senha."); return; }
       try {
+        markAccessNow(); // previne expiração imediata no primeiro login
         await auth.signInWithEmailAndPassword(email, senha);
-        markAccessNow(); // garante carimbo imediato
+        markAccessNow(); // garante carimbo
       } catch(e) {
         loginMsg(e?.message || "Falha ao entrar.");
       }
@@ -240,3 +235,5 @@
   </script>
 </body>
 </html>
+
+         
