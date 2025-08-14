@@ -1,10 +1,16 @@
-const CACHE_NAME = "lista-v2"; // mude v1 -> v2 -> v3 a cada atualização
+// AUMENTE a versão sempre que trocar o index.html
+const CACHE_NAME = "lista-v3";
 
 self.addEventListener("install", (e) => {
-  self.skipWaiting(); // assume imediatamente
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll(["/", "/index.html", "/carrinho.png", "/manifest.json"])
+      cache.addAll([
+        "/",          // se hospedar em subpasta, ajuste
+        "/index.html",
+        "/carrinho.png",
+        "/manifest.json"
+      ])
     )
   );
 });
@@ -19,8 +25,6 @@ self.addEventListener("activate", (e) => {
 
 self.addEventListener("fetch", (e) => {
   e.respondWith(
-    caches.match(e.request).then((resp) =>
-      resp || fetch(e.request)
-    )
+    caches.match(e.request).then((resp) => resp || fetch(e.request))
   );
 });
