@@ -1,4 +1,4 @@
-// AUMENTE a versão sempre que trocar o index.html
+// Troque a versão SEMPRE que publicar mudanças
 const CACHE_NAME = "lista-v4";
 
 self.addEventListener("install", (e) => {
@@ -6,7 +6,7 @@ self.addEventListener("install", (e) => {
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       cache.addAll([
-        "/",          // se hospedar em subpasta, ajuste
+        "/",              // se o app estiver em subpasta (ex: /meuapp/), ajuste todos os caminhos
         "/index.html",
         "/carrinho.png",
         "/manifest.json"
