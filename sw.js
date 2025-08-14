@@ -1,5 +1,5 @@
 // Troque a versão SEMPRE que publicar mudanças
-const CACHE_NAME = "lista-v4";
+const CACHE_NAME = "lista-v5";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
