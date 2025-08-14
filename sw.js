@@ -1,5 +1,5 @@
 // AUMENTE a versão sempre que trocar o index.html
-const CACHE_NAME = "lista-v3";
+const CACHE_NAME = "lista-v4";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
