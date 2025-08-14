@@ -12,17 +12,17 @@
     header { background-color: #ff5722; text-align: center; padding: 1em; border-radius: 10px 10px 0 0; }
     header img { max-height: 100px; }
 
-    /* Área de login e app */
     .wrapper { max-width: 720px; margin: 0 auto; }
     .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 1rem; margin-top: 1rem; }
+
+    /* Inputs e botões */
     .row { display: flex; gap: .5rem; flex-wrap: wrap; }
     label { font-weight: 600; }
     input, button { padding: .6rem .8rem; font-size: 1rem; border-radius: 8px; border: 1px solid #ddd; }
     button { background-color: #4caf50; color: white; font-weight: 700; cursor: pointer; border: none; }
-    button.secondary { background:#607d8b; }
-    button.warn { background:#e53935; }
 
-    .form { padding: .5em; background-color: #2196f3; border-radius: 0 0 10px 10px; display: flex; flex-direction: column; gap: .5em; color: white; }
+    /* Form principal */
+    .form { padding: .5em; background-color: #2196f3; border-radius: 10px; display: flex; flex-direction: column; gap: .5em; color: white; }
     .categoria-barra { display: flex; align-items: center; gap: .5em; }
     .categoria-barra input { flex-grow: 1; }
     .categoria-barra button { background-color: #ff9800; color: white; font-size: 1.2em; }
@@ -43,9 +43,9 @@
   </header>
 
   <div class="wrapper">
-    <!-- TELA DE LOGIN -->
+    <!-- LOGIN -->
     <div id="loginCard" class="card">
-      <h3>Entrar para acessar a lista</h3>
+      <h3>Entrar para acessar</h3>
       <div class="row">
         <div style="flex:1 1 260px">
           <label for="email">E‑mail</label><br/>
@@ -63,17 +63,9 @@
       <div class="msg" id="loginMsg"></div>
     </div>
 
-    <!-- APP (só aparece autenticado) -->
+    <!-- APP (sem título, sem e‑mail e sem botão sair) -->
     <div id="appCard" class="card" style="display:none">
-      <div class="row" style="justify-content:space-between; align-items:center">
-        <h3 style="margin:0">Lista de Compras</h3>
-        <div>
-          <span id="userEmail" class="muted"></span>
-          <button id="btnSair" class="warn">Sair</button>
-        </div>
-      </div>
-
-      <div class="form" style="margin-top:.75rem">
+      <div class="form" style="margin-top:.25rem">
         <input type="text" id="produto" placeholder="Produto" />
         <input type="text" id="quantidade" placeholder="Quantidade" />
         <div class="categoria-barra">
@@ -95,7 +87,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
-    // --- Config Firebase
+    // Config
     const firebaseConfig = {
       apiKey: "AIzaSyAqKRgVySm-vGFMi_iE2HJqlDAofmEAKAI",
       authDomain: "listacompras-8b4b0.firebaseapp.com",
@@ -110,52 +102,54 @@
     // Helpers
     const $ = (id) => document.getElementById(id);
     const show = (el, on) => el.style.display = on ? 'block' : 'none';
-    const showMsg = (text) => { const el=$("msg"); el.textContent=text||""; show(el, !!text); };
-    const showOk  = (text) => { const el=$("ok");  el.textContent=text||""; show(el, !!text); };
-    const loginMsg = (text) => { const el=$("loginMsg"); el.textContent=text||""; show(el, !!text); };
+    const showMsg = (t) => { const el=$("msg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
+    const showOk  = (t) => { const el=$("ok");  el.textContent=t||""; el.style.display=t?"block":"none"; };
+    const loginMsg = (t) => { const el=$("loginMsg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
 
-    // Auth UI
     const auth = firebase.auth();
+    let db = null, dbRef = null, dbListener = null;
 
-    // Referência do DB só será definida após login
-    let db = null;
-    let dbRef = null;
-    let dbListener = null;
-
-    // Liga/Desliga listener da lista
-    function attachListListener() {
-      if (!dbRef) return;
-      // Evita listeners duplicados
-      if (dbListener) dbRef.off("value", dbListener);
-
-      dbListener = (snapshot) => {
-        const lista = [];
-        snapshot.forEach((child) => {
-          const val = child.val() || {};
-          val.__key = child.key;
-          lista.push(val);
-        });
-        renderizarLista(lista);
-      };
-
-      dbRef.on("value", dbListener, (error) => {
-        showMsg("Não foi possível carregar a lista: " + (error?.message || error));
-      });
+    // --- Logout automático após 30 dias sem abrir o app
+    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
+    function markAccessNow() {
+      localStorage.setItem("lastAccessAt", Date.now().toString());
+    }
+    function sessionExpired() {
+      const last = Number(localStorage.getItem("lastAccessAt") || 0);
+      return !last || (Date.now() - last > THIRTY_DAYS);
     }
 
+    function attachListListener() {
+      if (!dbRef) return;
+      if (dbListener) dbRef.off("value", dbListener);
+      dbListener = (snap) => {
+        const arr = [];
+        snap.forEach(ch => { const v = ch.val() || {}; v.__key = ch.key; arr.push(v); });
+        renderizarLista(arr);
+      };
+      dbRef.on("value", dbListener, (err) => showMsg("Não foi possível carregar a lista: " + (err?.message || err)));
+    }
     function detachListListener() {
-      if (dbRef && dbListener) {
-        dbRef.off("value", dbListener);
-      }
+      if (dbRef && dbListener) dbRef.off("value", dbListener);
       dbListener = null;
     }
 
-    // Estado de autenticação
-    auth.onAuthStateChanged((user) => {
+    // Fluxo de autenticação
+    auth.onAuthStateChanged(async (user) => {
       if (user) {
-        $("userEmail").textContent = user.email || "";
+        // Se passaram 30 dias sem abrir o app, força logout
+        if (sessionExpired()) {
+          await auth.signOut().catch(()=>{});
+          localStorage.removeItem("lastAccessAt");
+          show($("appCard"), false);
+          show($("loginCard"), true);
+          return;
+        }
+        // Atualiza timestamp de acesso
+        markAccessNow();
+
         show($("loginCard"), false);
-        show($("appCard"),   true);
+        show($("appCard"), true);
 
         db = firebase.database();
         dbRef = db.ref("listaCompartilhada");
@@ -163,8 +157,7 @@
       } else {
         detachListListener();
         dbRef = null;
-
-        show($("appCard"),   false);
+        show($("appCard"), false);
         show($("loginCard"), true);
       }
     });
@@ -177,42 +170,34 @@
       if (!email || !senha) { loginMsg("Informe e‑mail e senha."); return; }
       try {
         await auth.signInWithEmailAndPassword(email, senha);
-        // regras por e-mail já garantem o acesso em /listaCompartilhada
+        markAccessNow();
       } catch (e) {
         loginMsg(e?.message || "Falha ao entrar.");
       }
     });
 
-    // Sair
-    $("btnSair").addEventListener("click", () => auth.signOut());
+    // Atualiza o carimbo quando o usuário volta para a aba (uso real renova o prazo)
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && auth.currentUser) markAccessNow();
+    });
 
-    // --- Funções do App (usam dbRef somente autenticado)
+    // App
     $("btnIncluir").addEventListener("click", incluirItem);
     $("btnBuscarCat").addEventListener("click", buscarPorCategoria);
-
-    function limparCampos() {
-      $("produto").value = "";
-      $("quantidade").value = "";
-      $("categoria").value = "";
-      $("produto").focus();
-    }
 
     async function incluirItem() {
       showMsg(""); showOk("");
       if (!dbRef) { showMsg("Você precisa estar autenticado."); return; }
-
-      const produto    = $("produto").value.trim();
+      const produto = $("produto").value.trim();
       const quantidade = $("quantidade").value.trim();
-      const categoria  = $("categoria").value.trim();
-
+      const categoria = $("categoria").value.trim();
       if (!produto) { showMsg("Informe pelo menos o nome do produto."); return; }
-
       const item = { produto, quantidade: quantidade || "", categoria: categoria || "", riscado: false };
-
       try {
         await dbRef.push(item);
-        limparCampos();
+        $("produto").value = ""; $("quantidade").value = ""; $("categoria").value = ""; $("produto").focus();
         showOk("Item incluído!");
+        markAccessNow();
       } catch (e) {
         showMsg("Não foi possível salvar no Firebase. Verifique as REGRAS do Realtime Database. (Erro: " + (e?.message || e) + ")");
       }
@@ -251,7 +236,6 @@
     }
 
     function buscarPorCategoria() {
-      // Filtra somente o que está já renderizado (listener atualiza sempre que muda)
       const filtro = ($("categoria").value || "").toLowerCase();
       const items = Array.from($("lista").children);
       items.forEach(li => {
