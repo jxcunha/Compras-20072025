@@ -99,7 +99,9 @@
           <button type="button" id="btnBuscarCat">🔍</button>
         </div>
 
-        <button type="button" id="btnIncluir">Incluir</button>
+        <!-- Botão com onclick direto -->
+        <button type="button" id="btnIncluir" onclick="incluirItem()">Incluir</button>
+
         <div class="msg" id="msg"></div>
         <div class="ok"  id="ok"></div>
       </div>
@@ -204,10 +206,10 @@
     });
 
     // App
-    $("btnIncluir").addEventListener("click", incluirItem);
-    $("btnBuscarCat").addEventListener("click", buscarPorCategoria);
+    // (removemos o addEventListener do Incluir — agora o onclick chama a função)
 
-    async function incluirItem(){
+    // Torna a função global e robusta
+    window.incluirItem = async function incluirItem(){
       showMsg(""); showOk("");
       if (!dbRef){ showMsg("Você precisa estar autenticado."); return; }
 
@@ -220,7 +222,7 @@
 
       let imageUrl = "";
       try {
-        // 1) Se houver arquivo, envia ao Storage e recupera URL
+        // 1) Upload da imagem (se houver)
         if (arquivo && storage) {
           const uid = auth.currentUser ? auth.currentUser.uid : "anon";
           const caminho = `imagens/${uid}/${Date.now()}_${arquivo.name}`;
@@ -229,17 +231,17 @@
           imageUrl = await ref.getDownloadURL();
         }
 
-        // 2) Salva o item no Realtime DB (com ou sem imageUrl)
+        // 2) Salva o item no Realtime DB
         const item = {
           produto,
           quantidade: quantidade || "",
-          categoria: categoria || "",
-          imageUrl: imageUrl || "",
-          riscado: false
+          categoria:  categoria || "",
+          imageUrl:   imageUrl || "",
+          riscado:    false
         };
         await dbRef.push(item);
 
-        // 3) Limpa o formulário
+        // 3) Limpa formulário e feedback
         $("produto").value = "";
         $("quantidade").value = "";
         $("categoria").value = "";
@@ -248,7 +250,7 @@
         showOk("Item incluído!");
         markAccessNow();
       } catch(e){
-        console.error(e);
+        console.error("incluirItem erro:", e);
         showMsg("Falha ao salvar item/imagem: " + (e?.message || e));
       }
     }
@@ -267,7 +269,6 @@
         const actions = document.createElement("div");
         actions.className = "actions";
 
-        // Botão de ver imagem, se existir
         if (item.imageUrl) {
           const btnImg = document.createElement("button");
           btnImg.title = "Ver imagem";
@@ -311,5 +312,3 @@
   </script>
 </body>
 </html>
-
-     
