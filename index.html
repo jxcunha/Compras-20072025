@@ -57,7 +57,8 @@
     #imagemProduto { display: none; } /* esconde o input file */
   </style>
 </head>
-<body>
+<body data-patched="loginfix">
+<div id="authMsg" style="max-width:900px;margin:8px auto;padding:8px 12px;border-radius:8px;background:#fff3cd;color:#614700;display:none"></div>
   <header class="wrapper">
     <img src="carrinho.png" alt="Carrinho" />
   </header>
@@ -120,7 +121,7 @@
       authDomain: "listacompras-8b4b0.firebaseapp.com",
       databaseURL: "https://listacompras-8b4b0-default-rtdb.firebaseio.com",
       projectId: "listacompras-8b4b0",
-      storageBucket: "listacompras-8b4b0.firebasestorage.app",
+      storageBucket: "listacompras-8b4b0.appspot.com",
       messagingSenderId: "729159542190",
       appId: "1:729159542190:web:bd0571be160cfd723a543f"
     };
@@ -131,24 +132,29 @@
     const show = (el, on) => el.style.display = on ? 'block' : 'none';
     const showMsg = (t) => { const el=$("msg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
     const showOk  = (t) => { const el=$("ok"); el.textContent=t||""; el.style.display=t?"block":"none"; };
+// === Util: File -> DataURL (JPEG) comprimido ===
+async function fileToCompressedDataURL(file, maxW=800, maxH=800, quality=0.7){
+  const dataURL = await new Promise((resolve, reject)=>{
+    const fr = new FileReader();
+    fr.onload = () => resolve(fr.result);
+    fr.onerror = reject;
+    fr.readAsDataURL(file);
+  });
+  const img = new Image();
+  img.src = dataURL;
+  await new Promise(res => { img.onload = res; });
+  let { width, height } = img;
+  const scale = Math.min(maxW/width, maxH/height, 1);
+  const w = Math.round(width*scale);
+  const h = Math.round(height*scale);
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, w, h);
+  const out = canvas.toDataURL('image/jpeg', quality);
+  return out;
+}
 
-    // Mensagens mais claras para erros do Firebase Storage
-    function explainStorageError(e){
-      const code = (e && e.code) ? String(e.code) : "";
-      if (code.includes("storage/unauthorized")) {
-        return "Sem permissão no Storage (regras de segurança). Revise as regras do Storage.";
-      }
-      if (code.includes("storage/no-default-bucket")) {
-        return "Sem bucket padrão do Storage. No Console do Firebase > Storage > Começar (Get started).";
-      }
-      if (code.includes("storage/object-not-found")) {
-        return "Arquivo não encontrado no Storage.";
-      }
-      if (code.includes("storage/unknown")) {
-        return "Erro desconhecido no Storage (verifique o Console do Firebase).";
-      }
-      return (e && e.message) ? e.message : String(e||"Erro desconhecido");
-    }
     const loginMsg = (t) => { const el=$("loginMsg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
 
     const auth = firebase.auth();
@@ -222,33 +228,45 @@
 
     // App
     window.incluirItem = async function incluirItem(){
-      showMsg(""); 
-      if (!dbRef){ showMsg("Você precisa estar autenticado."); return; }
+  showMsg("");
+  if (!dbRef){ showMsg("Você precisa estar autenticado."); return; }
 
-      const produto    = $("produto").value.trim();
-      const quantidade = $("quantidade").value.trim();
-      const categoria  = $("categoria").value.trim();
-      const arquivo    = $("imagemProduto").files[0] || null;
+  const produto    = $("produto").value.trim();
+  const quantidade = $("quantidade").value.trim();
+  const categoria  = $("categoria").value.trim();
+  const arquivo    = $("imagemProduto").files[0] || null;
 
-      if (!produto){ showMsg("Informe pelo menos o nome do produto."); return; }
+  if (!produto){ showMsg("Informe pelo menos o nome do produto."); return; }
 
-      const btn = $("btnIncluir"); if (btn) { btn.disabled = true; btn.textContent = "Incluindo..."; }
+  const btn = $("btnIncluir"); if (btn) { btn.disabled = true; btn.textContent = "Incluindo..."; }
 
-      let imageUrl = "";
-      try {
-        if (arquivo) {
-          if (!storage) throw new Error("Storage não inicializado");
-          const uid = auth.currentUser ? auth.currentUser.uid : "anon";
-          const caminho = `imagens/${uid}/${Date.now()}_${arquivo.name}`;
-          const ref = storage.ref().child(caminho);
-          await ref.put(arquivo, { contentType: arquivo.type || undefined });
-          imageUrl = await ref.getDownloadURL();
-        }
-      } catch (e) {
-        console.error("[upload-imagem] erro:", e);
-        showMsg("Não deu para enviar a imagem agora. Incluí o item sem foto. Detalhe: " + explainStorageError(e));
-      }
-      const item = {
+  let imageUrl = "";
+  try {
+    if (arquivo) {
+      imageUrl = await fileToCompressedDataURL(arquivo, 800, 800, 0.7);
+    }
+    const item = {
+      produto, quantidade, categoria,
+      imageUrl,
+      createdAt: Date.now(),
+      uid: auth.currentUser ? auth.currentUser.uid : null
+    };
+    const novo = await dbRef.push(item);
+    $("produto").value = "";
+    $("quantidade").value = "";
+    $("categoria").value = "";
+    $("imagemProduto").value = "";
+    showOk("Item incluído com sucesso" + (imageUrl ? " (com imagem)" : " (sem imagem)"));
+    markAccessNow();
+  } catch(e){
+    console.error("incluirItem erro:", e);
+    showMsg("Falha ao salvar item: " + (e?.message || String(e)));
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Incluir"; }
+  }
+}
+
+        const item = {
           produto,
           quantidade: quantidade || "",
           categoria:  categoria || "",
@@ -265,11 +283,9 @@
         $("produto").focus();
 
         markAccessNow();
-        if (btn) { btn.disabled = false; btn.textContent = "Incluir"; }
       } catch(e){
         console.error("incluirItem erro:", e);
-        showMsg("Falha ao salvar item/imagem: " + explainStorageError(e));
-        if (btn) { btn.disabled = false; btn.textContent = "Incluir"; }
+        showMsg("Falha ao salvar item/imagem: " + (e?.message || e));
       }
     }
 
@@ -328,5 +344,94 @@
         .catch(err=>console.error("SW fail:", err));
     }
   </script>
+
+<script>
+(function(){
+  function showAuthMsg(t){ 
+    const el = document.getElementById('authMsg'); 
+    if (!el) return; 
+    el.textContent = t || ''; 
+    el.style.display = t ? 'block' : 'none'; 
+  }
+  function findLoginForm(){
+    const forms = Array.from(document.querySelectorAll('form'));
+    for (const f of forms){
+      const email = f.querySelector('input[type="email"], input[name*="email" i]');
+      const pass  = f.querySelector('input[type="password"], input[name*="senha" i], input[name*="password" i]');
+      if (email && pass) return {form:f, email, pass};
+    }
+    return null;
+  }
+  async function ensureFirebaseReady(){
+    if (!(window.firebase && firebase.apps && firebase.apps.length)){
+      console.warn("Firebase não inicializado ainda");
+      return false;
+    }
+    try{ firebase.app(); return true; }
+    catch(e){ console.error("Firebase app erro:", e); showAuthMsg("Falha ao inicializar Firebase: " + (e?.message || e)); return false; }
+  }
+  async function attachLoginHandler(){
+    if (!(await ensureFirebaseReady())) return;
+    const found = findLoginForm();
+    if (!found){ console.warn("Form de login não encontrado."); return; }
+    const {form, email, pass} = found;
+    form.addEventListener('submit', async (ev)=>{
+      try{
+        ev.preventDefault();
+        showAuthMsg("");
+        const em = (email.value||"").trim();
+        const pw = (pass.value||"").trim();
+        if (!em || !pw){ showAuthMsg("Informe e-mail e senha."); return; }
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await firebase.auth().signInWithEmailAndPassword(em, pw);
+        showAuthMsg("Login OK. Carregando...");
+      }catch(e){
+        console.error("Erro login:", e);
+        let msg = e?.message || String(e);
+        if (e && e.code){
+          const map = {
+            "auth/operation-not-allowed": "Login por e-mail/senha não habilitado no Firebase Console.",
+            "auth/user-not-found": "Usuário não encontrado.",
+            "auth/wrong-password": "Senha incorreta.",
+            "auth/invalid-email": "E-mail inválido.",
+            "auth/too-many-requests": "Muitas tentativas. Tente novamente em alguns minutos.",
+            "auth/network-request-failed": "Falha de rede. Verifique sua conexão."
+          };
+          msg = map[e.code] || msg + " (" + e.code + ")";
+        }
+        showAuthMsg(msg);
+      }
+    });
+    const btnAnon = document.getElementById('btnAnon');
+    if (btnAnon){
+      btnAnon.addEventListener('click', async ()=>{
+        try{
+          showAuthMsg("");
+          await firebase.auth().signInAnonymously();
+          showAuthMsg("Entrou sem conta. Carregando...");
+        }catch(e){
+          console.error("Erro login anônimo:", e);
+          showAuthMsg("Falha no login anônimo: " + (e?.message || e));
+        }
+      });
+    }
+    if (location.search.includes("debug=1")){
+      const box = document.createElement('div');
+      box.style.cssText="position:fixed;right:8px;bottom:8px;background:#eef;border:1px solid #99f;padding:8px;border-radius:8px;font:12px/1.4 sans-serif;z-index:99999";
+      box.innerHTML = "<b>Debug Auth</b><br>host="+location.host+"<br>projeto="+(firebase.app().options.projectId||'?');
+      document.body.appendChild(box);
+      firebase.auth().onAuthStateChanged(u=>{
+        box.innerHTML = "<b>Debug Auth</b><br>host="+location.host+"<br>projeto="+(firebase.app().options.projectId||'?')+"<br>uid="+(u?u.uid:"(deslogado)");
+      });
+    }
+  }
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', attachLoginHandler);
+  } else {
+    attachLoginHandler();
+  }
+})();
+</script>
+
 </body>
 </html>
