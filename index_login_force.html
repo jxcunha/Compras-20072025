@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#FF9800" />
+  <title>Lista (Login Force v3)</title>
+  <style>
+    body{font-family:sans-serif;background:#fff8e1;margin:0;padding:1em}
+    .wrapper{max-width:720px;margin:0 auto}
+    .card{background:#fff;border-radius:10px;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:1rem;margin-top:1rem}
+    label{font-weight:600}
+    input,button{padding:.6rem .8rem;font-size:1rem;border-radius:8px;border:1px solid #ddd}
+    button{background:#4caf50;color:#fff;font-weight:700;cursor:pointer;border:none}
+    .msg{margin-top:8px;padding:8px;border-radius:8px}
+    #authMsg{background:#fff3cd;color:#614700;display:none}
+    #banner{background:#e3f2fd;color:#0d47a1;padding:.6rem .9rem;border-radius:8px;margin:0 auto;max-width:720px}
+    #debug{position:fixed;right:8px;bottom:8px;background:#eef;border:1px solid #99f;padding:8px;border-radius:8px;font:12px/1.4 sans-serif;z-index:99999}
+  </style>
+</head>
+<body>
+  <div id="banner">Versão: <b>LOGIN-FORCE v3</b> — host: <span id="host"></span></div>
+  <div id="authMsg" class="msg"></div>
+
+  <div class="wrapper">
+    <div id="loginView" class="card">
+      <h3>Entrar</h3>
+      <label>E‑mail</label><br/>
+      <input type="email" id="email" placeholder="seuemail@exemplo.com" autocomplete="username" /><br/><br/>
+      <label>Senha</label><br/>
+      <input type="password" id="senha" placeholder="********" autocomplete="current-password" /><br/><br/>
+      <button id="btnLogin" type="button">Entrar</button>
+      <button id="btnAnon" type="button" style="background:#607d8b;margin-left:.5rem">Entrar sem conta</button>
+    </div>
+
+    <div id="appView" class="card" style="display:none">
+      <h3>Bem-vinda!</h3>
+      <p>Login OK. Aqui aparece sua lista.</p>
+      <button id="btnSair" type="button" style="background:#e53935">Sair</button>
+    </div>
+  </div>
+
+  <div id="debug">carregando...</div>
+
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+  <script>
+    document.getElementById('host').textContent = location.host + location.pathname;
+    const firebaseConfig = {
+      apiKey: "AIzaSyAqKRgVySm-vGFMi_iE2HJqlDAofmEAKAI",
+      authDomain: "listacompras-8b4b0.firebaseapp.com",
+      databaseURL: "https://listacompras-8b4b0-default-rtdb.firebaseio.com",
+      projectId: "listacompras-8b4b0",
+      appId: "1:729159542190:web:bd0571be160cfd723a543f"
+    };
+    firebase.initializeApp(firebaseConfig);
+
+    const $ = (id)=>document.getElementById(id);
+    function msg(t){ const el=$("authMsg"); el.textContent=t||""; el.style.display=t?"block":"none"; }
+    function showApp(){ $("loginView").style.display="none"; $("appView").style.display="block"; }
+    function showLogin(){ $("appView").style.display="none"; $("loginView").style.display="block"; }
+
+    // Estado do auth + debug overlay
+    firebase.auth().onAuthStateChanged(u=>{
+      const d = $("debug");
+      d.textContent = "uid=" + (u?u.uid:"(deslogado)") + " | host=" + location.host;
+      if (u) { showApp(); } else { showLogin(); }
+    });
+
+    $("btnLogin").addEventListener("click", async ()=>{
+      try{
+        msg("");
+        const em = $("email").value.trim();
+        const pw = $("senha").value.trim();
+        if (!em || !pw){ msg("Informe e‑mail e senha."); return; }
+        await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        await firebase.auth().signInWithEmailAndPassword(em, pw);
+      }catch(e){
+        console.error(e);
+        const map = {
+          "auth/operation-not-allowed": "E-mail/Senha não habilitado no Console.",
+          "auth/user-not-found": "Usuário não encontrado.",
+          "auth/wrong-password": "Senha incorreta.",
+          "auth/invalid-email": "E‑mail inválido.",
+          "auth/too-many-requests": "Muitas tentativas. Tente depois.",
+          "auth/network-request-failed": "Falha de rede.",
+        };
+        msg(map[e?.code] || (e?.message || String(e)));
+      }
+    });
+
+    $("btnAnon").addEventListener("click", async ()=>{
+      try{
+        msg("");
+        await firebase.auth().signInAnonymously();
+      }catch(e){
+        console.error(e);
+        msg("Falha no login anônimo: " + (e?.message || String(e)));
+      }
+    });
+
+    $("btnSair").addEventListener("click", async ()=>{
+      await firebase.auth().signOut();
+    });
+
+    // Registra o SW kill switch para garantir arquivos novos
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js?kill=' + Date.now()).catch(()=>{});
+    }
+  </script>
+</body>
+</html>
