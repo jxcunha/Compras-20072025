@@ -1,319 +1,86 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#FF9800" />
-  <title>Lista</title>
-  <link rel="icon" type="image/png" href="carrinho.png" />
-  <link rel="manifest" href="manifest.json" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Compras</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js"></script>
   <style>
-    body { font-family: sans-serif; background-color: #fff8e1; margin: 0; padding: 1em; }
-    header { background-color: #ff5722; text-align: center; padding: 1em; border-radius: 10px 10px 0 0; }
-    header img { max-height: 100px; }
-
-    .wrapper { max-width: 720px; margin: 0 auto; }
-    .card { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,.06); padding: 1rem; margin-top: 1rem; }
-
-    .row { display: flex; gap: .5rem; flex-wrap: wrap; }
-    label { font-weight: 600; }
-    input, button { padding: .6rem .8rem; font-size: 1rem; border-radius: 8px; border: 1px solid #ddd; }
-    button { background-color: #4caf50; color: white; font-weight: 700; cursor: pointer; border: none; }
-
-    .form { padding: .5em; background-color: #2196f3; border-radius: 10px; display: flex; flex-direction: column; gap: .5em; color: white; }
-    .categoria-barra { display: flex; align-items: center; gap: .5em; }
-    .categoria-barra input { flex-grow: 1; }
-    .categoria-barra button { background-color: #ff9800; color: white; font-size: 1.2em; }
-
-    ul { list-style: none; padding: 0; }
-    li { font-size: .95em; background: #fff; margin: .15em 0; padding: .45em .7em; display: flex; align-items: center; justify-content: space-between; border-radius: 6px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1); }
-    .item-info { flex-grow: 1; padding: 0 1em; }
-    .actions button { margin-left: .5em; background: transparent; border: none; cursor: pointer; font-size: 1.1em; }
-
-    .msg { margin-top: 8px; color: #b71c1c; font-size: .95em; background: #ffebee; padding: 6px 10px; border-radius: 6px; display:none; }
-    .ok  { margin-top: 8px; color: #1b5e20; font-size: .95em; background: #e8f5e9; padding: 6px 10px; border-radius: 6px; display:none; }
-
-    /* --- ÍCONE DE IMAGEM DENTRO DO CAMPO PRODUTO --- */
-    .produto-com-imagem {
-      position: relative;
-      display: flex;
-      align-items: center;
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff8e1;
+      margin: 0;
+      padding: 20px;
     }
-    .produto-com-imagem input[type="text"] {
-      flex: 1;
-      padding-right: 2.6em; /* espaço pro ícone à direita */
+    h1 {
+      color: #ff5722;
+      text-align: center;
     }
-    .icone-upload {
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      cursor: pointer;
-      font-size: 1.25em;
-      filter: drop-shadow(0 1px 0 rgba(0,0,0,.15));
-      user-select: none;
+    input, button {
+      padding: 8px;
+      margin: 5px;
     }
-    .icone-upload:active { transform: translateY(-50%) scale(.95); }
-    #imagemProduto { display: none; } /* esconde o input file */
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+    li {
+      background: #f1f1f1;
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+    }
   </style>
 </head>
-<body data-patched="loginfix">
-<div id="authMsg" style="max-width:900px;margin:8px auto;padding:8px 12px;border-radius:8px;background:#fff3cd;color:#614700;display:none"></div>
-  <header class="wrapper">
-    <img src="carrinho.png" alt="Carrinho" />
-  </header>
+<body>
+  <h1>Lista de Compras 🛒</h1>
+  <input type="text" id="produto" placeholder="Produto">
+  <input type="text" id="categoria" placeholder="Categoria">
+  <button onclick="adicionar()">Adicionar</button>
 
-  <div class="wrapper">
-    <!-- LOGIN -->
-    <div id="loginCard" class="card" style="display:none">
-      <h3>Entrar</h3>
-      <div class="row">
-        <div style="flex:1 1 260px">
-          <label for="email">E‑mail</label><br/>
-          <input type="email" id="email" placeholder="seuemail@exemplo.com" autocomplete="username" />
-        </div>
-        <div style="flex:1 1 220px">
-          <label for="senha">Senha</label><br/>
-          <input type="password" id="senha" placeholder="••••••••" autocomplete="current-password" />
-        </div>
-      </div>
-      <div class="row" style="margin-top:.5rem">
-        <button id="btnEntrar">Entrar</button>
-      </div>
-      <div class="msg" id="loginMsg"></div>
-    </div>
-
-    <!-- APP -->
-    <div id="appCard" class="card" style="display:block">
-      <div class="form">
-        <!-- CAMPO PRODUTO COM ÍCONE 📷 -->
-        <div class="produto-com-imagem">
-          <input type="text" id="produto" placeholder="Produto" />
-          <label for="imagemProduto" class="icone-upload" title="Adicionar imagem">📷</label>
-          <input type="file" id="imagemProduto" accept="image/*" />
-        </div>
-
-        <input type="text" id="quantidade" placeholder="Quantidade" />
-        <div class="categoria-barra">
-          <input type="text" id="categoria" placeholder="Categoria" />
-          <button type="button" id="btnBuscarCat" onclick="buscarPorCategoria()">🔍</button>
-        </div>
-
-        <button type="button" id="btnIncluir" onclick="incluirItem()">Incluir</button>
-
-        <div class="msg" id="msg"></div>
-        <div class="ok"  id="ok"></div>
-      </div>
-      <ul id="lista"></ul>
-    </div>
-  </div>
-
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
+  <ul id="lista"></ul>
 
   <script>
-    // Config Firebase
+    // Configuração Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAqKRgVySm-vGFMi_iE2HJqlDAofmEAKAI",
       authDomain: "listacompras-8b4b0.firebaseapp.com",
       databaseURL: "https://listacompras-8b4b0-default-rtdb.firebaseio.com",
       projectId: "listacompras-8b4b0",
-      storageBucket: "listacompras-8b4b0.firebasestorage.app",
+      storageBucket: "listacompras-8b4b0.appspot.com",
       messagingSenderId: "729159542190",
       appId: "1:729159542190:web:bd0571be160cfd723a543f"
     };
-    firebase.initializeApp(firebaseConfig);
 
+    // Inicializar Firebase
+    const app = firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
 
-    auth.signInAnonymously().catch(e=>console.warn("Anon auth falhou:", e));
+    const listaRef = db.ref("itens");
 
-    // Helpers
-    const $ = (id) => document.getElementById(id);
-    const show = (el, on) => el.style.display = on ? 'block' : 'none';
-    const showMsg = (t) => { const el=$("msg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
-    const showOk  = (t) => { const el=$("ok"); el.textContent=t||""; el.style.display=t?"block":"none"; };
-// === Util: File -> DataURL (JPEG) comprimido ===
-async function fileToCompressedDataURL(file, maxW=800, maxH=800, quality=0.7){
-  const dataURL = await new Promise((resolve, reject)=>{
-    const fr = new FileReader();
-    fr.onload = () => resolve(fr.result);
-    fr.onerror = reject;
-    fr.readAsDataURL(file);
-  });
-  const img = new Image();
-  img.src = dataURL;
-  await new Promise(res => { img.onload = res; });
-  let { width, height } = img;
-  const scale = Math.min(maxW/width, maxH/height, 1);
-  const w = Math.round(width*scale);
-  const h = Math.round(height*scale);
-  const canvas = document.createElement('canvas');
-  canvas.width = w; canvas.height = h;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(img, 0, 0, w, h);
-  const out = canvas.toDataURL('image/jpeg', quality);
-  return out;
-}
+    // Adicionar produto
+    function adicionar() {
+      const produto = document.getElementById("produto").value;
+      const categoria = document.getElementById("categoria").value;
+      if (produto.trim() === "") return;
 
-    const loginMsg = (t) => { const el=$("loginMsg"); el.textContent=t||""; el.style.display=t?"block":"none"; };
-
-
-    let db = null, dbRef = null, dbListener = null;
-
-    // ------- Logout automático após 30 dias sem abrir o app (com proteção 1º login)
-    const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-    function markAccessNow(){ localStorage.setItem("lastAccessAt", Date.now().toString()); }
-    function sessionExpiredStrict(){
-      const last = Number(localStorage.getItem("lastAccessAt") || 0);
-      return last > 0 && (Date.now() - last > THIRTY_DAYS);
+      listaRef.push({ produto, categoria });
+      document.getElementById("produto").value = "";
+      document.getElementById("categoria").value = "";
     }
 
-    function attachListListener(){
-      if (!dbRef) return;
-      if (dbListener) dbRef.off("value", dbListener);
-      dbListener = (snap) => {
-        const arr = [];
-        snap.forEach(ch => { const v = ch.val()||{}; v.__key = ch.key; arr.push(v); });
-        renderizarLista(arr);
-      };
-      dbRef.on("value", dbListener, (err)=>showMsg("Não foi possível carregar a lista: " + (err?.message||err)));
-    }
-    function detachListListener(){ if (dbRef && dbListener) dbRef.off("value", dbListener); dbListener=null; }
-
-    auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        markAccessNow();
-        document.getElementById("loginCard").style.display = "none";
-        document.getElementById("appCard").style.display = "block";
-        db = firebase.database();
-        dbRef = db.ref("listaCompartilhada");
-        attachListListener();
-      } else {
-        try { firebase.auth().signInAnonymously(); } catch(e) {}
-        document.getElementById("loginCard").style.display = "none";
-        document.getElementById("appCard").style.display = "block";
-      }
-    });
-          localStorage.removeItem("lastAccessAt");
-          show($("appCard"), false);
-          show($("loginCard"), true);
-          return;
-        }
-        if (!localStorage.getItem("lastAccessAt")) markAccessNow();
-
-        show($("loginCard"), false);
-        show($("appCard"), true);
-
-        db = firebase.database();
-        dbRef = db.ref("listaCompartilhada");
-        
-        attachListListener();
-      } else {
-        detachListListener();
-        dbRef = null;
-        storage = null;
-        show($("appCard"), false);
-        show($("loginCard"), true);
-      }
-    });
-
-    // Login
-          const email = $("email").value.trim();
-      const senha = $("senha").value;
-      if (!email || !senha){ loginMsg("Informe e‑mail e senha."); return; }
-      try {
-        markAccessNow();
-        await auth.signInWithEmailAndPassword(email, senha);
-        markAccessNow();
-      } catch(e) {
-        loginMsg(e?.message || "Falha ao entrar.");
-      }
-    });
-
-    document.addEventListener("visibilitychange", () => {
-      if (!document.hidden && auth.currentUser) markAccessNow();
-    });
-
-    // App
-    window.incluirItem = async function incluirItem(){
-  showMsg("");
-  if (!dbRef){ showMsg("Aguarde inicialização do banco..."); return; }
-
-  const produto    = $("produto").value.trim();
-  const quantidade = $("quantidade").value.trim();
-  const categoria  = $("categoria").value.trim();
-  const arquivo    = $("imagemProduto").files[0] || null;
-
-  if (!produto){ showMsg("Informe pelo menos o nome do produto."); return; }
-
-  const btn = $("btnIncluir"); if (btn) { btn.disabled = true; btn.textContent = "Incluindo..."; }
-
-  let imageUrl = "";
-  try {
-    if (arquivo) {
-      imageUrl = await fileToCompressedDataURL(arquivo, 800, 800, 0.7);
-    }
-    function renderizarLista(arr){
-      const ul = $("lista"); ul.innerHTML = "";
-      arr.forEach(item=>{
+    // Mostrar lista em tempo real
+    listaRef.on("value", snapshot => {
+      const lista = document.getElementById("lista");
+      lista.innerHTML = "";
+      snapshot.forEach(child => {
+        const item = child.val();
         const li = document.createElement("li");
-
-        const info = document.createElement("div");
-        info.className = "item-info";
-        const q = item.quantidade ? ` - ${item.quantidade}` : "";
-        const c = item.categoria ? ` (${item.categoria})` : "";
-        info.innerHTML = `<strong>${item.produto}</strong>${q}${c}`;
-
-        const actions = document.createElement("div");
-        actions.className = "actions";
-
-        if (item.imageUrl) {
-          const btnImg = document.createElement("button");
-          btnImg.title = "Ver imagem";
-          btnImg.textContent = "📷";
-          btnImg.onclick = () => window.open(item.imageUrl, "_blank");
-          actions.appendChild(btnImg);
-        }
-
-        const btnExcluir = document.createElement("button");
-        btnExcluir.title = "Excluir";
-        btnExcluir.textContent = "🗑️";
-        btnExcluir.onclick = () => {
-          if (!dbRef){ showMsg("Aguarde inicialização do banco..."); return; }
-          if (item.__key) {
-            dbRef.child(item.__key).remove().catch(err=>showMsg("Erro ao excluir: " + (err?.message||err)));
-          }
-        };
-
-        actions.appendChild(btnExcluir);
-        li.appendChild(info);
-        li.appendChild(actions);
-        ul.appendChild(li);
+        li.textContent = `${item.produto} (${item.categoria || "sem categoria"})`;
+        lista.appendChild(li);
       });
-    }
-
-    function buscarPorCategoria(){
-      const filtro = (document.getElementById("categoria").value || "").toLowerCase();
-      const items = Array.from(document.getElementById("lista").children);
-      items.forEach(li=>{
-        const texto = li.querySelector(".item-info")?.textContent?.toLowerCase() || "";
-        li.style.display = filtro && !texto.includes(`(${filtro}`) && !texto.includes(filtro) ? "none" : "";
-      });
-    }
-
-    // Service Worker (PWA)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js')
-        .then(()=>console.log("SW ok"))
-        .catch(err=>console.error("SW fail:", err));
-    }
+    });
   </script>
-
-
-
-
 </body>
 </html>
